@@ -9,6 +9,11 @@
 use std::num::ParseIntError;
 use std::str::FromStr;
 
+use ParsePersonError::BadLen;
+use ParsePersonError::Empty;
+use ParsePersonError::NoName;
+use ParsePersonError::ParseInt;
+
 #[derive(Debug, PartialEq)]
 struct Person {
     name: String,
@@ -28,8 +33,6 @@ enum ParsePersonError {
     ParseInt(ParseIntError),
 }
 
-// I AM NOT DONE
-
 // Steps:
 // 1. If the length of the provided string is 0, an error should be returned
 // 2. Split the given string on the commas present in it
@@ -43,9 +46,25 @@ enum ParsePersonError {
 // As an aside: `Box<dyn Error>` implements `From<&'_ str>`. This means that if you want to return a
 // string error message, you can do so via just using return `Err("my error message".into())`.
 
+// Using ParsePersonError::{Empty, BadLen, NoName, ParseInt} above
 impl FromStr for Person {
     type Err = ParsePersonError;
     fn from_str(s: &str) -> Result<Person, Self::Err> {
+        if s.is_empty() {
+            Err(Empty) // i.e., Err(ParsePersonError::Empty)
+        } else {
+            let p: Vec<&str> = s.split(',').collect();
+            if p.len() != 2 {
+                Err(BadLen)
+            } else if p[0].len() == 0 {
+                Err(NoName)
+            } else {
+                match p[1].parse::<usize>() {
+                    Ok(a) => Ok(Person { name: p[0].to_string(), age: a }),
+                    Err(a) => Err(ParseInt(a)),
+                }
+            }
+        }
     }
 }
 
@@ -62,6 +81,7 @@ mod tests {
     fn empty_input() {
         assert_eq!("".parse::<Person>(), Err(ParsePersonError::Empty));
     }
+
     #[test]
     fn good_input() {
         let p = "John,32".parse::<Person>();
@@ -70,6 +90,7 @@ mod tests {
         assert_eq!(p.name, "John");
         assert_eq!(p.age, 32);
     }
+
     #[test]
     fn missing_age() {
         assert!(matches!(
